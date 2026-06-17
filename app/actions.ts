@@ -23,42 +23,38 @@ export type Task = {
   createdAt: Date;
 };
 
-// In-memory storage (replace with DB later)
+// In-memory storage
 let projects: Project[] = [];
 let nextProjectId = 1;
 let nextTaskId = 1;
 
-// Validation Schemas
+// Schemas
 const createProjectSchema = z.object({
-  name: z.string().min(2, "Project name must be at least 2 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().optional(),
 });
 
 const createTaskSchema = z.object({
   projectId: z.coerce.number(),
-  title: z.string().min(3, "Task title must be at least 3 characters"),
+  title: z.string().min(3),
   priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  dueDate: z.string().optional(),
 });
 
-// Get all projects
-export async function getProjects(): Promise<Project[]> {
+// Get Projects
+export async function getProjects() {
   return projects;
 }
 
 // Create Project
 export async function createProject(formData: FormData) {
-  const rawData = {
+  const result = createProjectSchema.safeParse({
     name: formData.get('name'),
     description: formData.get('description'),
-  };
-
-  const result = createProjectSchema.safeParse(rawData);
+  });
 
   if (!result.success) {
-    return {
-      success: false,
-      errors: result.error.flatten().fieldErrors,
-    };
+    return { success: false, errors: result.error.flatten().fieldErrors };
   }
 
   const newProject: Project = {
@@ -71,29 +67,24 @@ export async function createProject(formData: FormData) {
 
   projects.unshift(newProject);
   revalidatePath('/');
-
   return { success: true };
 }
 
-// Create Task (placeholder for now)
+// Create Task
 export async function createTask(formData: FormData) {
-  const rawData = {
+  const result = createTaskSchema.safeParse({
     projectId: formData.get('projectId'),
     title: formData.get('title'),
     priority: formData.get('priority'),
-  };
-
-  const result = createTaskSchema.safeParse(rawData);
+    dueDate: formData.get('dueDate'),
+  });
 
   if (!result.success) {
     return { success: false, errors: result.error.flatten().fieldErrors };
   }
 
-  // Find project
   const project = projects.find(p => p.id === result.data.projectId);
-  if (!project) {
-    return { success: false, message: 'Project not found' };
-  }
+  if (!project) return { success: false, message: 'Project not found' };
 
   const newTask: Task = {
     id: nextTaskId++,
@@ -101,11 +92,48 @@ export async function createTask(formData: FormData) {
     title: result.data.title,
     priority: result.data.priority,
     status: 'todo',
+    dueDate: result.data.dueDate ? new Date(result.data.dueDate) : undefined,
     createdAt: new Date(),
   };
 
   project.tasks.unshift(newTask);
   revalidatePath('/');
-
   return { success: true };
+}
+
+// Toggle Task Status
+export async function toggleTaskStatus(taskId: number) {
+  for (const project of projects) {
+    const task = project.tasks.find(t => t.id === taskId);
+    if (task) {
+      task.status = task.status === 'done' ? 'todo' : 'done';
+      revalidatePath('/');
+      return { success: true };
+    }
+  }
+  return { success: false };
+}
+
+// Delete Task
+export async function deleteTask(taskId: number) {
+  for (const project of projects) {
+    const index = project.tasks.findIndex(t => t.id === taskId);
+    if (index !== -1) {
+      project.tasks.splice(index, 1);
+      revalidatePath('/');
+      return { success: true };
+    }
+  }
+  return { success: false };
+}
+
+// Delete Project
+export async function deleteProject(projectId: number) {
+  const index = projects.findIndex(p => p.id === projectId);
+  if (index !== -1) {
+    projects.splice(index, 1);
+    revalidatePath('/');
+    return { success: true };
+  }
+  return { success: false };
 }

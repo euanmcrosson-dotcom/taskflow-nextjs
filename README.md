@@ -1,25 +1,19 @@
-# TaskFlow
+# TaskFlow 🚀
 
-A powerful, secure task management application built with Next.js 16, Server Actions, and production-ready patterns.
+A powerful, secure task management application built with **Next.js Server Actions**.
 
 ## Features
-- Projects & Tasks
-- Secure Server Actions with Zod validation
-- Priority, Due Dates, Status tracking
-- Clean modern UI
+- Create & manage multiple projects
+- Add tasks with priority, due dates
+- Toggle task status
+- Delete tasks and projects
+- Full Zod validation + error handling
+- Clean, modern UI
 
-## Tech Stack
-- Next.js 16 (App Router)
-- TypeScript
+## Tech
+- Next.js 16 + React 19
+- Server Actions (secure by default)
 - Tailwind CSS
-- Zod (validation)
+- TypeScript
 
-## Getting Started
-
-```bash
-npm install
-npm run dev
-```
-
-## Architecture
-All mutations go through secure Server Actions with proper validation and error handling.
+Built as a learning project to demonstrate production-ready Server Actions patterns.
