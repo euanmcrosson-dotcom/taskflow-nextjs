@@ -7,15 +7,15 @@ body {
 }
 
 .card {
-  @apply bg-zinc-900 border border-zinc-800 rounded-xl p-6;
+  @apply bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all hover:border-zinc-700;
 }
 
 .input {
-  @apply w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500;
+  @apply w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors;
 }
 
 .btn {
-  @apply px-4 py-2.5 rounded-lg font-medium transition-colors;
+  @apply px-5 py-2.5 rounded-xl font-medium transition-all active:scale-[0.985];
 }
 
 .btn-primary {
@@ -23,5 +23,19 @@ body {
 }
 
 .btn-danger {
-  @apply bg-red-600 text-white hover:bg-red-700;
+  @apply bg-red-600 hover:bg-red-700 text-white;
+}
+
+.modal {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm;
+}
+
+.priority-high { @apply bg-red-500/15 text-red-400 border-red-500/30; }
+.priority-medium { @apply bg-yellow-500/15 text-yellow-400 border-yellow-500/30; }
+.priority-low { @apply bg-blue-500/15 text-blue-400 border-blue-500/30; }
+
+.status-done { @apply line-through text-zinc-500; }
+
+.task-row {
+  @apply flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3.5 group transition-colors hover:border-zinc-700;
 }
