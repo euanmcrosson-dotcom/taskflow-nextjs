@@ -22,7 +22,10 @@ export default function TaskFlow() {
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
 
   const [showProjectModal, setShowProjectModal] = useState(false);
-  const [showTaskModal, setShowTaskModal] = useState<number | null>(null); // projectId
+  const [showTaskModal, setShowTaskModal] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'project' | 'task'; id: number; name?: string } | null>(null);
+
+  const [actionError, setActionError] = useState('');
 
   const loadProjects = async () => {
     const data = await getProjects();
@@ -31,7 +34,6 @@ export default function TaskFlow() {
 
   useEffect(() => { loadProjects(); }, []);
 
-  // Filtered projects
   const filteredProjects = projects
     .map(p => ({
       ...p,
@@ -49,9 +51,29 @@ export default function TaskFlow() {
     if (res.success) {
       await loadProjects();
       setShowProjectModal(false);
+      setActionError('');
+    } else if (res.errors) {
+      setActionError(Object.values(res.errors).flat().join(', '));
     }
     return res;
   }, { success: false });
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+
+    try {
+      if (deleteConfirm.type === 'project') {
+        await deleteProject(deleteConfirm.id);
+      } else {
+        await deleteTask(deleteConfirm.id);
+      }
+      await loadProjects();
+      setDeleteConfirm(null);
+      setActionError('');
+    } catch (err) {
+      setActionError('Failed to delete. Please try again.');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-8">
@@ -67,15 +89,17 @@ export default function TaskFlow() {
         </div>
       </div>
 
+      {/* Error Banner */}
+      {actionError && (
+        <div className="mb-6 bg-red-950 border border-red-900 text-red-400 px-4 py-3 rounded-xl flex justify-between items-center">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError('')} className="text-red-400 hover:text-red-300">×</button>
+        </div>
+      )}
+
       {/* Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-8">
-        <input
-          type="text"
-          placeholder="Search tasks..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="input flex-1"
-        />
+        <input type="text" placeholder="Search tasks..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="input flex-1" />
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="input w-44">
           <option value="all">All Status</option>
           <option value="todo">To Do</option>
@@ -107,14 +131,13 @@ export default function TaskFlow() {
                   {project.description && <p className="text-zinc-400 mt-1.5 text-sm leading-snug">{project.description}</p>}
                 </div>
                 <button 
-                  onClick={async () => { await deleteProject(project.id); loadProjects(); }}
+                  onClick={() => setDeleteConfirm({ type: 'project', id: project.id, name: project.name })}
                   className="text-xs text-red-400 hover:text-red-500 px-3 py-1 rounded-lg hover:bg-red-950/50 transition-colors"
                 >
                   Delete
                 </button>
               </div>
 
-              {/* Add Task Button */}
               <button 
                 onClick={() => setShowTaskModal(project.id)}
                 className="w-full mb-5 py-2.5 text-sm border border-zinc-700 hover:bg-zinc-800 rounded-xl transition-colors flex items-center justify-center gap-2"
@@ -122,7 +145,6 @@ export default function TaskFlow() {
                 + Add Task
               </button>
 
-              {/* Tasks */}
               <div className="space-y-2">
                 {project.tasks.length === 0 ? (
                   <div className="text-center py-6 text-sm text-zinc-500 border border-dashed border-zinc-800 rounded-xl">No tasks yet</div>
@@ -143,7 +165,6 @@ export default function TaskFlow() {
 
                           <div className="min-w-0 flex-1">
                             <div className={task.status === 'done' ? 'status-done' : ''}>{task.title}</div>
-                            
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`text-[10px] px-2.5 py-px rounded-full border font-medium
                                 ${task.priority === 'high' ? 'priority-high' : task.priority === 'medium' ? 'priority-medium' : 'priority-low'}
@@ -161,7 +182,7 @@ export default function TaskFlow() {
                         </div>
 
                         <button
-                          onClick={async () => { await deleteTask(task.id); loadProjects(); }}
+                          onClick={() => setDeleteConfirm({ type: 'task', id: task.id })}
                           className="text-red-400 hover:text-red-500 text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-all"
                         >Delete</button>
                       </div>
@@ -196,9 +217,13 @@ export default function TaskFlow() {
             <form 
               action={async (formData) => {
                 formData.append('projectId', showTaskModal.toString());
-                await createTask(formData);
-                await loadProjects();
-                setShowTaskModal(null);
+                const res = await createTask(formData);
+                if (res.success) {
+                  await loadProjects();
+                  setShowTaskModal(null);
+                } else {
+                  setActionError(res.errors ? Object.values(res.errors).flat().join(', ') : 'Failed to create task');
+                }
               }} 
               className="space-y-4"
             >
@@ -221,6 +246,24 @@ export default function TaskFlow() {
 
               <SubmitButton>Add Task</SubmitButton>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="modal" onClick={() => setDeleteConfirm(null)}>
+          <div className="card w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold mb-2">Delete {deleteConfirm.type === 'project' ? 'Project' : 'Task'}?</h3>
+            <p className="text-zinc-400 mb-6">
+              {deleteConfirm.type === 'project' 
+                ? `Are you sure you want to delete "${deleteConfirm.name}"? This will also delete all its tasks.` 
+                : 'This action cannot be undone.'}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="btn flex-1 border border-zinc-700">Cancel</button>
+              <button onClick={handleDelete} className="btn btn-danger flex-1">Delete</button>
+            </div>
           </div>
         </div>
       )}
