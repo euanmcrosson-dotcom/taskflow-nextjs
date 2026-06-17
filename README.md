@@ -1,13 +1,20 @@
 # TaskFlow 🚀
 
-Powerful task manager with **Next.js + Prisma + SQLite** + Server Actions.
+A powerful task management app built with Next.js + Prisma + Auth.js.
 
-## New Features
-- Global search across tasks
-- Filter by status and priority
-- Real database persistence
+## Deployment on Vercel
 
-## Quick Start
+This app is ready to deploy on Vercel.
+
+### Recommended Database
+Use **Neon** or **Supabase** (free tier available) for PostgreSQL.
+
+### Environment Variables needed on Vercel:
+- `DATABASE_URL`
+- `DIRECT_URL` (for Prisma)
+- `AUTH_SECRET` (generate with `openssl rand -base64 32`)
+
+## Local Development
 ```bash
 npm install
 npx prisma generate

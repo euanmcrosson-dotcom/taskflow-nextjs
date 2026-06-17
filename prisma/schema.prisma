@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // for migrations
 }
 
 model User {
@@ -37,7 +38,6 @@ model Task {
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-// Auth.js required models
 model Account {
   id                 String  @id @default(cuid())
   userId             String
