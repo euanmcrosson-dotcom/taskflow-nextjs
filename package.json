@@ -1,6 +1,6 @@
 {
   "name": "taskflow-nextjs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -15,10 +15,14 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@prisma/client": "^5.22.0",
+    "@auth/prisma-adapter": "^2.7.0",
+    "next-auth": "^5.0.0-beta.25",
+    "bcryptjs": "^2.4.3",
     "zod": "^3.23.8",
     "date-fns": "^3.6.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

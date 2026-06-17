@@ -1,12 +1,13 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
-import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
+import { auth } from "./api/auth/[...nextauth]/auth";
+import { PrismaClient } from "@prisma/client";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 const prisma = new PrismaClient();
 
-// Validation Schemas
+// Schemas
 const createProjectSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
@@ -19,9 +20,13 @@ const createTaskSchema = z.object({
   dueDate: z.string().optional(),
 });
 
-// Get all projects with tasks
+// Get projects for current user
 export async function getProjects() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
   return prisma.project.findMany({
+    where: { userId: session.user.id },
     include: { tasks: true },
     orderBy: { createdAt: 'desc' },
   });
@@ -29,6 +34,9 @@ export async function getProjects() {
 
 // Create Project
 export async function createProject(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
   const result = createProjectSchema.safeParse({
     name: formData.get('name'),
     description: formData.get('description'),
@@ -42,15 +50,19 @@ export async function createProject(formData: FormData) {
     data: {
       name: result.data.name,
       description: result.data.description,
+      userId: session.user.id,
     },
   });
 
-  revalidatePath('/');
+  revalidatePath("/");
   return { success: true };
 }
 
 // Create Task
 export async function createTask(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
+
   const result = createTaskSchema.safeParse({
     projectId: formData.get('projectId'),
     title: formData.get('title'),
@@ -62,6 +74,12 @@ export async function createTask(formData: FormData) {
     return { success: false, errors: result.error.flatten().fieldErrors };
   }
 
+  // Verify ownership
+  const project = await prisma.project.findFirst({
+    where: { id: result.data.projectId, userId: session.user.id },
+  });
+  if (!project) return { success: false, message: "Project not found" };
+
   await prisma.task.create({
     data: {
       projectId: result.data.projectId,
@@ -71,36 +89,48 @@ export async function createTask(formData: FormData) {
     },
   });
 
-  revalidatePath('/');
+  revalidatePath("/");
   return { success: true };
 }
 
-// Toggle Task Status
+// Toggle / Delete with ownership checks (simplified for demo)
 export async function toggleTaskStatus(taskId: number) {
-  const task = await prisma.task.findUnique({ where: { id: taskId } });
-  if (!task) return { success: false };
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
 
-  const newStatus = task.status === 'done' ? 'todo' : 'done';
-
-  await prisma.task.update({
-    where: { id: taskId },
-    data: { status: newStatus },
+  await prisma.task.updateMany({
+    where: { id: taskId, project: { userId: session.user.id } },
+    data: { status: { set: await getTaskNewStatus(taskId) } },
   });
 
-  revalidatePath('/');
+  revalidatePath("/");
   return { success: true };
 }
 
-// Delete Task
+async function getTaskNewStatus(taskId: number) {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  return task?.status === "done" ? "todo" : "done";
+}
+
+// Delete functions with ownership
 export async function deleteTask(taskId: number) {
-  await prisma.task.delete({ where: { id: taskId } });
-  revalidatePath('/');
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
+
+  await prisma.task.deleteMany({
+    where: { id: taskId, project: { userId: session.user.id } },
+  });
+  revalidatePath("/");
   return { success: true };
 }
 
-// Delete Project
 export async function deleteProject(projectId: number) {
-  await prisma.project.delete({ where: { id: projectId } });
-  revalidatePath('/');
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
+
+  await prisma.project.deleteMany({
+    where: { id: projectId, userId: session.user.id },
+  });
+  revalidatePath("/");
   return { success: true };
 }
