@@ -1,24 +1,16 @@
 # TaskFlow 🚀
 
-A powerful task management app built with **Next.js + Prisma + SQLite** and secure Server Actions.
+Powerful task manager with **Next.js + Prisma + SQLite** + Server Actions.
 
-## Features
-- Projects & Tasks with real database
-- Priority, due dates, status tracking
-- Secure Server Actions with Zod
-- Delete projects & tasks
+## New Features
+- Global search across tasks
+- Filter by status and priority
+- Real database persistence
 
-## Setup
-
+## Quick Start
 ```bash
 npm install
 npx prisma generate
-npm run db:push     # Create database tables
+npm run db:push
 npm run dev
 ```
-
-## Scripts
-- `npm run db:push` - Push schema to SQLite
-- `npm run db:studio` - Open Prisma Studio
-
-Now using a real database instead of in-memory storage!
