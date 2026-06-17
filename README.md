@@ -1,19 +1,24 @@
 # TaskFlow 🚀
 
-A powerful, secure task management application built with **Next.js Server Actions**.
+A powerful task management app built with **Next.js + Prisma + SQLite** and secure Server Actions.
 
 ## Features
-- Create & manage multiple projects
-- Add tasks with priority, due dates
-- Toggle task status
-- Delete tasks and projects
-- Full Zod validation + error handling
-- Clean, modern UI
+- Projects & Tasks with real database
+- Priority, due dates, status tracking
+- Secure Server Actions with Zod
+- Delete projects & tasks
 
-## Tech
-- Next.js 16 + React 19
-- Server Actions (secure by default)
-- Tailwind CSS
-- TypeScript
+## Setup
 
-Built as a learning project to demonstrate production-ready Server Actions patterns.
+```bash
+npm install
+npx prisma generate
+npm run db:push     # Create database tables
+npm run dev
+```
+
+## Scripts
+- `npm run db:push` - Push schema to SQLite
+- `npm run db:studio` - Open Prisma Studio
+
+Now using a real database instead of in-memory storage!

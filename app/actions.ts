@@ -1,36 +1,14 @@
 'use server';
 
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-// Types
-export type Project = {
-  id: number;
-  name: string;
-  description?: string;
-  createdAt: Date;
-  tasks: Task[];
-};
+const prisma = new PrismaClient();
 
-export type Task = {
-  id: number;
-  projectId: number;
-  title: string;
-  description?: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'todo' | 'in_progress' | 'done';
-  dueDate?: Date;
-  createdAt: Date;
-};
-
-// In-memory storage
-let projects: Project[] = [];
-let nextProjectId = 1;
-let nextTaskId = 1;
-
-// Schemas
+// Validation Schemas
 const createProjectSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(2),
   description: z.string().optional(),
 });
 
@@ -41,9 +19,12 @@ const createTaskSchema = z.object({
   dueDate: z.string().optional(),
 });
 
-// Get Projects
+// Get all projects with tasks
 export async function getProjects() {
-  return projects;
+  return prisma.project.findMany({
+    include: { tasks: true },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 // Create Project
@@ -57,15 +38,13 @@ export async function createProject(formData: FormData) {
     return { success: false, errors: result.error.flatten().fieldErrors };
   }
 
-  const newProject: Project = {
-    id: nextProjectId++,
-    name: result.data.name,
-    description: result.data.description,
-    createdAt: new Date(),
-    tasks: [],
-  };
+  await prisma.project.create({
+    data: {
+      name: result.data.name,
+      description: result.data.description,
+    },
+  });
 
-  projects.unshift(newProject);
   revalidatePath('/');
   return { success: true };
 }
@@ -83,57 +62,45 @@ export async function createTask(formData: FormData) {
     return { success: false, errors: result.error.flatten().fieldErrors };
   }
 
-  const project = projects.find(p => p.id === result.data.projectId);
-  if (!project) return { success: false, message: 'Project not found' };
+  await prisma.task.create({
+    data: {
+      projectId: result.data.projectId,
+      title: result.data.title,
+      priority: result.data.priority,
+      dueDate: result.data.dueDate ? new Date(result.data.dueDate) : null,
+    },
+  });
 
-  const newTask: Task = {
-    id: nextTaskId++,
-    projectId: result.data.projectId,
-    title: result.data.title,
-    priority: result.data.priority,
-    status: 'todo',
-    dueDate: result.data.dueDate ? new Date(result.data.dueDate) : undefined,
-    createdAt: new Date(),
-  };
-
-  project.tasks.unshift(newTask);
   revalidatePath('/');
   return { success: true };
 }
 
 // Toggle Task Status
 export async function toggleTaskStatus(taskId: number) {
-  for (const project of projects) {
-    const task = project.tasks.find(t => t.id === taskId);
-    if (task) {
-      task.status = task.status === 'done' ? 'todo' : 'done';
-      revalidatePath('/');
-      return { success: true };
-    }
-  }
-  return { success: false };
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) return { success: false };
+
+  const newStatus = task.status === 'done' ? 'todo' : 'done';
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { status: newStatus },
+  });
+
+  revalidatePath('/');
+  return { success: true };
 }
 
 // Delete Task
 export async function deleteTask(taskId: number) {
-  for (const project of projects) {
-    const index = project.tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) {
-      project.tasks.splice(index, 1);
-      revalidatePath('/');
-      return { success: true };
-    }
-  }
-  return { success: false };
+  await prisma.task.delete({ where: { id: taskId } });
+  revalidatePath('/');
+  return { success: true };
 }
 
 // Delete Project
 export async function deleteProject(projectId: number) {
-  const index = projects.findIndex(p => p.id === projectId);
-  if (index !== -1) {
-    projects.splice(index, 1);
-    revalidatePath('/');
-    return { success: true };
-  }
-  return { success: false };
+  await prisma.project.delete({ where: { id: projectId } });
+  revalidatePath('/');
+  return { success: true };
 }
